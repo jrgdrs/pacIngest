@@ -92,14 +92,11 @@
 			flex-direction: column;
 			gap: 4px;
 			padding-top: 18px;
-			min-width: 320px;
-			max-width: 500px
+			min-width: 320px
 		}
 
 		#jsonPre {
-			flex: 1;
 			min-height: 130px;
-			max-height: 200px;
 			font-family: monospace;
 			font-size: 10px;
 			background: #111;
@@ -111,6 +108,22 @@
 			white-space: pre;
 			overflow: auto
 		}
+
+		#copyBtn {
+			align-self: flex-start;
+			margin-top: 2px;
+			padding: 4px 12px;
+			background: #3a3a3c;
+			color: #f0f0f0;
+			border: none;
+			font-size: 11px;
+			font-weight: 600;
+			cursor: pointer;
+			border-radius: 6px
+		}
+
+		#copyBtn:hover { background: #48484a }
+		#copyBtn:active { background: #0a84ff }
 
 		#status {
 			padding: 5px 18px;
@@ -316,6 +329,7 @@
 		<div id="jsonOutput">
 			<!--label>Varianten-JSON</label-->
 			<textarea id="jsonPre" readonly spellcheck="false"></textarea>
+			<button id="copyBtn" onclick="navigator.clipboard.writeText(document.getElementById('jsonPre').value)">Kopieren</button>
 		</div>
 	</div>
 	<div id="status">Bereit.</div>
@@ -25947,7 +25961,7 @@ div.h3{font-family:'Fettfont',sans-serif;font-weight:bold;font-size:12.26px;word
 .title-3{margin:0;font-size:32pt;line-height:32pt;font-family:'Titelfont';width:calc(var(--width)/var(--tsf));transform:scale(var(--tsf),1);transform-origin:top left;color:blueviolet}
 .title-4{margin:0;font-size:22pt;line-height:22pt;font-family:'Titelfont';width:calc(var(--width)/var(--tsf));transform:scale(var(--tsf),1);transform-origin:top left}
 .title-5{margin:0;font-size:18pt;line-height:18pt;width:calc(var(--width)/var(--tsf));transform:scale(var(--tsf),1);transform-origin:top left}
-.caption{font-family:'Captionfont',sans-serif;font-size:11px;line-height:14.14px;hyphens:auto;text-align:justify}`;
+.caption{font-family:'Captionfont',sans-serif;font-size:11px;line-height:14.14px;hyphens:auto;text-align:justify;transform: translateY(-2px);}`;
 
 		// ================================================================
 		// CONFIG — entspricht config/grid.json + config/variants.json
@@ -26205,6 +26219,31 @@ div.h3{font-family:'Fettfont',sans-serif;font-weight:bold;font-size:12.26px;word
 			return IMAGE_ANCHOR_TABLE[`${awid},${pwid}`] || Math.max(1, awid - pwid);
 		}
 
+		function buildComponents(v) {
+			const { awid, pwid, pcnt, t, b, c, ic } = v;
+			if (pcnt && pwid === awid) {
+				return {
+					image:   { x: 0,                  y: 0,          w: awid, h: ic - c },
+					caption: { x: 0,                  y: ic - c,     w: awid, h: c      },
+					title:   { x: 0,                  y: ic,         w: awid, h: t      },
+					body:    { x: 0,                  y: ic + t,     w: awid, h: b      }
+				};
+			} else if (pcnt) {
+				const ax = getImageAnchor(awid, pwid) - 1;
+				return {
+					title:   { x: 0,  y: 0,           w: awid, h: t      },
+					image:   { x: ax, y: t,            w: pwid, h: ic - c },
+					caption: { x: ax, y: t + ic - c,   w: pwid, h: c      },
+					body:    { x: 0,  y: t,            w: awid, h: b      }
+				};
+			} else {
+				return {
+					title: { x: 0, y: 0, w: awid, h: t },
+					body:  { x: 0, y: t, w: awid, h: b }
+				};
+			}
+		}
+
 		function createVariantHTML(variant, ca) {
 			// Berechnungen aus render.js
 			let t = variant.t * LINE_PX - 1;
@@ -26227,7 +26266,7 @@ div.h3{font-family:'Fettfont',sans-serif;font-weight:bold;font-size:12.26px;word
 				// Vollbild oben → Titel darunter
 				fixedBlocks = `
       <div class="anchor-top-col-1 col-span-${awid}" style="height:${ic}px">
-        <img src="${imgSrc}" style="height:${i}px;margin:2px 0 3px 0;width:100%;object-fit:cover">
+        <img src="${imgSrc}" style="height:${i}px;margin:2px 0 1px 0;width:100%;object-fit:cover">
         <div class="caption">${ca.caption}</div>
       </div>
       <div class="col-span-${awid}" style="height:${t}px">
@@ -26241,7 +26280,7 @@ div.h3{font-family:'Fettfont',sans-serif;font-weight:bold;font-size:12.26px;word
         <div class="title-${prio}">${ca.subject}</div>
       </div>
       <div class="anchor-top-col-${anchor} col-span-${pwid}" style="height:${ic}px">
-        <img src="${imgSrc}" style="height:${i}px;margin:2px 0 3px 0;width:100%;object-fit:cover">
+        <img src="${imgSrc}" style="height:${i}px;margin:2px 0 1px 0;width:100%;object-fit:cover">
         <div class="caption">${ca.caption}</div>
       </div>`;
 			} else {
@@ -26327,12 +26366,13 @@ document.addEventListener('readystatechange',async function(){
 				const key = String(v.awid);
 				if (!grouped[key]) grouped[key] = [];
 				grouped[key].push({
-					col:     v.awid,
-					ln:      v.tbfn, // v.ahig
-					name: `${v.shape}_${v.tbfn}`,
-					if:      Math.round(imageFraction * 1000) / 1000,
-					ip:      Math.round(propDeviation  * 1000) / 1000,
-					qf:      Math.round(imageFraction * propDeviation * 1000) / 1000
+					col:        v.awid,
+					ln:         v.tbfn,
+					name:       `${v.shape}_${v.tbfn}`,
+					if:         Math.round(imageFraction * 1000) / 1000,
+					ip:         Math.round(propDeviation  * 1000) / 1000,
+					qf:         Math.round(imageFraction * propDeviation * 1000) / 1000,
+					components: buildComponents(v)
 				});
 			}
 			document.getElementById('jsonPre').value = JSON.stringify(grouped, null, 2);
